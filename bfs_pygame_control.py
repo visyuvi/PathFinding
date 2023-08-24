@@ -10,12 +10,38 @@ def get_rect(x, y):
 def get_next_nodes(x, y):
     check_next_node = lambda x, y: True if (0 <= x < cols and 0 <= y < rows
                                             and not grid[y][x]) else False
-    ways = [-1, 0], [0, -1], [1, 0], [0, 1]
+    ways = [-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, -1], [1, 1], [-1, 1]
     return [(x + dx, y + dy) for dx, dy in ways if check_next_node(x + dx, y + dy)]
 
 
-cols, rows = 25, 15
-TILE = 60
+def get_click_mouse_pos():
+    x, y = pg.mouse.get_pos()
+    grid_x, grid_y = x // TILE, y // TILE
+    pg.draw.rect(sc, pg.Color('red'), get_rect(grid_x, grid_y))
+    click = pg.mouse.get_pressed()
+    return (grid_x, grid_y) if click[0] else False
+
+
+def bfs(start, goal):
+    queue = deque([start])
+    visited = {start: None}
+
+    while queue:
+        curr_node = queue.popleft()
+        if curr_node == goal:
+            break
+
+        next_nodes = graph[curr_node]
+        for next_node in next_nodes:
+            if next_node not in visited:
+                queue.append(next_node)
+                visited[next_node] = curr_node
+
+    return queue, visited
+
+
+cols, rows = 35, 25
+TILE = 50
 
 pg.init()
 
@@ -32,13 +58,12 @@ for y, row in enumerate(grid):
         if not col:
             graph[(x, y)] = graph.get((x, y), []) + get_next_nodes(x, y)
 
-print(graph)
 
 # BFS settings
 start = (0, 0)
+goal = start
 queue = deque([start])
 visited = {start: None}
-cur_node = start
 
 while True:
     # fill screen
@@ -52,23 +77,18 @@ while True:
     [pg.draw.rect(sc, pg.Color('forestgreen'), get_rect(x, y)) for x, y in visited]
     [pg.draw.rect(sc, pg.Color('darkslategray'), get_rect(x, y)) for x, y in queue]
 
-    # BFS logic
-    if queue:
-        cur_node = queue.popleft()
-        next_nodes = graph[cur_node]
-        for next_node in next_nodes:
-            if next_node not in visited:
-                queue.append(next_node)
-                visited[next_node] = cur_node
-
+    # bfs, get path to mouse click
+    mouse_pos = get_click_mouse_pos()
+    if mouse_pos and not grid[mouse_pos[1]][mouse_pos[0]]:
+        queue, visited = bfs(start, mouse_pos)
+        goal = mouse_pos
     # draw path
-    path_head, path_segment = cur_node, cur_node
-    while path_segment:
+    path_head, path_segment = goal, goal
+    while path_segment and path_segment in visited:
         pg.draw.rect(sc, pg.Color('white'), get_rect(*path_segment), TILE, border_radius=TILE // 3)
         path_segment = visited[path_segment]
         pg.draw.rect(sc, pg.Color('blue'), get_rect(*start), border_radius=TILE // 3)
         pg.draw.rect(sc, pg.Color('magenta'), get_rect(*path_head), border_radius=TILE // 3)
-
 
     # to quit pygame window
     [exit() for event in pg.event.get() if event.type == pg.QUIT]
